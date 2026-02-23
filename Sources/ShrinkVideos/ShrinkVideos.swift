@@ -16,6 +16,9 @@ struct ShrinkVideos: AsyncParsableCommand {
     @Flag(name: .long, help: "Process all found videos instead of just the first")
     var all: Bool = false
 
+    @Option(name: .long, help: "Number of found videos to skip before processing")
+    var skip: Int = 0
+
     func run() async throws {
         if !dryRun && all {
             print("--dry-run false --all is not yet implemented.")
@@ -67,7 +70,7 @@ struct ShrinkVideos: AsyncParsableCommand {
             mjpegVideos.append(info)
             print("  [\(mjpegVideos.count)] \(info.summary)")
 
-            if !all {
+            if !all && mjpegVideos.count > skip {
                 break
             }
         }
@@ -83,8 +86,12 @@ struct ShrinkVideos: AsyncParsableCommand {
             return
         }
 
-        // Convert first video
-        let video = mjpegVideos[0]
+        guard skip < mjpegVideos.count else {
+            print("--skip \(skip) but only found \(mjpegVideos.count) video(s).")
+            return
+        }
+
+        let video = mjpegVideos[skip]
         print("\nConverting \(video.filename) to HEVC...")
 
         do {
