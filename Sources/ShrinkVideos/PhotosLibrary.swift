@@ -89,20 +89,22 @@ enum PhotosLibrary {
 
     private static func getMediaItemMetadata(assetIdentifier: String) throws -> (title: String?, caption: String?) {
         let escapedId = escapeForAppleScript(assetIdentifier)
-        let script = """
+        let titleScript = """
             tell application "Photos"
-                set theItem to media item id "\(escapedId)"
-                set theTitle to name of theItem
-                set theDesc to description of theItem
-                return theTitle & "\\n---SEPARATOR---\\n" & theDesc
+                set theVal to name of media item id "\(escapedId)"
+                if theVal is missing value then return ""
+                return theVal
             end tell
             """
-        let (output, status) = runAppleScript(script)
-        guard status == 0, let output else { return (nil, nil) }
-
-        let parts = output.components(separatedBy: "\n---SEPARATOR---\n")
-        let title = parts.first.flatMap { $0.isEmpty ? nil : $0 }
-        let caption = parts.count > 1 ? (parts[1].isEmpty ? nil : parts[1]) : nil
+        let captionScript = """
+            tell application "Photos"
+                set theVal to description of media item id "\(escapedId)"
+                if theVal is missing value then return ""
+                return theVal
+            end tell
+            """
+        let title = runAppleScript(titleScript).output.flatMap { $0.isEmpty ? nil : $0 }
+        let caption = runAppleScript(captionScript).output.flatMap { $0.isEmpty ? nil : $0 }
         return (title, caption)
     }
 
