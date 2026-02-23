@@ -1,11 +1,10 @@
-# Shrink Videos
+# `shrink-videos`
 
-This is a Mac CLI app that can:
+This is a Mac CLI tool that can:
 
 * Find all Motion JPEG videos in the user’s Photos Library
 * Convert those videos into HEVC-encoded .mp4 files
-  * Without any loss of image or sound quality whatsoever
-  * Without any loss of metadata whatsoever
+  * While preserving audio+video quality and metadata
 
 
 ## Usage
