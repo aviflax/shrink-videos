@@ -22,7 +22,15 @@ struct ShrinkVideos: AsyncParsableCommand {
     @Flag(name: .long, help: "Add converted video to Photos library with original metadata")
     var add: Bool = false
 
+    @Flag(name: .long, help: "Add converted video to Photos library and delete the original")
+    var replace: Bool = false
+
     func run() async throws {
+        if add && replace {
+            print("Error: --add and --replace are mutually exclusive.")
+            Foundation.exit(1)
+        }
+
         if !dryRun && all {
             print("--dry-run false --all is not yet implemented.")
             return
@@ -121,7 +129,7 @@ struct ShrinkVideos: AsyncParsableCommand {
                 try (header + csvLine).write(toFile: historyPath, atomically: true, encoding: .utf8)
             }
 
-            if add {
+            if add || replace {
                 print("Adding to Photos library...")
                 try await PhotosLibrary.addToLibrary(
                     videoURL: outputURL,
@@ -129,6 +137,12 @@ struct ShrinkVideos: AsyncParsableCommand {
                     caption: "(shrunk with shrink-videos; original Motion-JPEG file was \(video.filename) which was \(video.formattedSize))"
                 )
                 print("Added to Photos library.")
+
+                if replace {
+                    print("Deleting original from Photos library...")
+                    try await PhotosLibrary.deleteAsset(video.asset)
+                    print("Original moved to Recently Deleted.")
+                }
             }
         } catch {
             print("Error converting video: \(error)")

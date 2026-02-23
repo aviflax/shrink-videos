@@ -150,6 +150,12 @@ enum PhotosLibrary {
         return (output, process.terminationStatus)
     }
 
+    static func deleteAsset(_ asset: PHAsset) async throws {
+        try await PHPhotoLibrary.shared().performChanges {
+            PHAssetChangeRequest.deleteAssets([asset] as NSArray)
+        }
+    }
+
     static func getFileInfo(for phAsset: PHAsset) -> (filename: String, fileSize: Int64) {
         let resources = PHAssetResource.assetResources(for: phAsset)
         let videoResource = resources.first(where: { $0.type == .video })
