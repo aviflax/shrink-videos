@@ -105,6 +105,22 @@ struct ShrinkVideos: AsyncParsableCommand {
             print("Done! Saved to: \(outputURL.path)")
             print("Original: \(video.formattedSize) → Converted: \(outputMB)")
 
+            let historyPath = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".shrink-videos.history.csv").path
+            let now = ISO8601DateFormatter()
+            now.formatOptions = [.withInternetDateTime]
+            now.timeZone = .current
+            let when = now.string(from: Date())
+            let csvLine = "\(when),\(video.filename),\(video.fileSize),\(outputSize)\n"
+            if let handle = FileHandle(forWritingAtPath: historyPath) {
+                handle.seekToEndOfFile()
+                handle.write(csvLine.data(using: .utf8)!)
+                handle.closeFile()
+            } else {
+                let header = "when,filename,original_size,new_size\n"
+                try (header + csvLine).write(toFile: historyPath, atomically: true, encoding: .utf8)
+            }
+
             if add {
                 print("Adding to Photos library...")
                 try await PhotosLibrary.addToLibrary(
