@@ -52,9 +52,8 @@ enum VideoConverter {
         process.executableURL = URL(fileURLWithPath: ffmpeg)
         process.arguments = [
             "-i", sourceURL.path,
-            "-c:v", "libx265",
-            "-preset", "medium",
-            "-crf", "0",
+            "-c:v", "hevc_videotoolbox",
+            "-q:v", "100",
             "-tag:v", "hvc1",
             "-c:a", "copy",
             "-map", "0",
@@ -63,10 +62,6 @@ enum VideoConverter {
             "-y",
             outputPath,
         ]
-
-        // Suppress ffmpeg's verbose output by default
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
 
         try process.run()
         process.waitUntilExit()
