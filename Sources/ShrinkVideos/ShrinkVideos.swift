@@ -79,16 +79,17 @@ struct ShrinkVideos: AsyncParsableCommand {
             )
 
             mjpegVideos.append(info)
-            print("  [\(mjpegVideos.count)] \(info.summary)")
-
-            if !all && mjpegVideos.count > skip {
-                break
-            }
         }
 
         if mjpegVideos.isEmpty {
             print("No Motion JPEG videos found.")
             return
+        }
+
+        mjpegVideos.sort { $0.fileSize > $1.fileSize }
+
+        for (i, info) in mjpegVideos.enumerated() {
+            print("  [\(i + 1)] \(info.summary)")
         }
 
         print("\nFound \(mjpegVideos.count) Motion JPEG video(s).")
