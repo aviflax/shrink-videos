@@ -22,4 +22,5 @@ This is a Mac CLI tool that can:
 * `shrink-videos --dry-run true` will find a single Motion JPEG video and output information about it
 * `shrink-videos --dry-run true --all` will find all Motion JPEG videos and output information about each one
 * `shrink-videos --dry-run false` will find a single Motion JPEG video, convert it to HEVC, and save it to `/tmp/`
-* `shrink-videos --dry-run false --all` is not yet implemented
+* `shrink-videos --dry-run false --all` will convert all Motion JPEG videos to HEVC, processing the largest first
+* `shrink-videos --dry-run false --all --replace` will convert all Motion JPEG videos, add them to Photos, and delete the originals

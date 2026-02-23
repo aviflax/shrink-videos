@@ -31,11 +31,6 @@ struct ShrinkVideos: AsyncParsableCommand {
             Foundation.exit(1)
         }
 
-        if !dryRun && all {
-            print("--dry-run false --all is not yet implemented.")
-            return
-        }
-
         // Request Photos access
         do {
             try await PhotosLibrary.requestAuthorization()
@@ -103,51 +98,60 @@ struct ShrinkVideos: AsyncParsableCommand {
             return
         }
 
-        let video = mjpegVideos[skip]
-        print("\nConverting \(video.filename) to HEVC...")
+        let videosToProcess = all
+            ? Array(mjpegVideos.dropFirst(skip))
+            : [mjpegVideos[skip]]
 
-        do {
-            let outputURL = try VideoConverter.convert(video: video)
-            let outputSize = try FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] as? Int64 ?? 0
-            let outputMB = String(format: "%.1f MB", Double(outputSize) / 1_000_000)
-
-            print("Done! Saved to: \(outputURL.path)")
-            print("Original: \(video.formattedSize) → Converted: \(outputMB)")
-
-            let historyPath = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".shrink-videos.history.csv").path
-            let now = ISO8601DateFormatter()
-            now.formatOptions = [.withInternetDateTime]
-            now.timeZone = .current
-            let when = now.string(from: Date())
-            let csvLine = "\(when),\(video.filename),\(video.fileSize),\(outputSize)\n"
-            if let handle = FileHandle(forWritingAtPath: historyPath) {
-                handle.seekToEndOfFile()
-                handle.write(csvLine.data(using: .utf8)!)
-                handle.closeFile()
+        for (i, video) in videosToProcess.enumerated() {
+            if videosToProcess.count > 1 {
+                print("\n[\(i + 1)/\(videosToProcess.count)] Converting \(video.filename) to HEVC...")
             } else {
-                let header = "when,filename,original_size,new_size\n"
-                try (header + csvLine).write(toFile: historyPath, atomically: true, encoding: .utf8)
+                print("\nConverting \(video.filename) to HEVC...")
             }
 
-            if add || replace {
-                print("Adding to Photos library...")
-                try await PhotosLibrary.addToLibrary(
-                    videoURL: outputURL,
-                    originalAsset: video.asset,
-                    caption: "(shrunk with shrink-videos; original Motion-JPEG file was \(video.filename) which was \(video.formattedSize))"
-                )
-                print("Added to Photos library.")
+            do {
+                let outputURL = try VideoConverter.convert(video: video)
+                let outputSize = try FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] as? Int64 ?? 0
+                let outputMB = String(format: "%.1f MB", Double(outputSize) / 1_000_000)
 
-                if replace {
-                    print("Deleting original from Photos library...")
-                    try await PhotosLibrary.deleteAsset(video.asset)
-                    print("Original moved to Recently Deleted.")
+                print("Done! Saved to: \(outputURL.path)")
+                print("Original: \(video.formattedSize) → Converted: \(outputMB)")
+
+                let historyPath = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(".shrink-videos.history.csv").path
+                let now = ISO8601DateFormatter()
+                now.formatOptions = [.withInternetDateTime]
+                now.timeZone = .current
+                let when = now.string(from: Date())
+                let csvLine = "\(when),\(video.filename),\(video.fileSize),\(outputSize)\n"
+                if let handle = FileHandle(forWritingAtPath: historyPath) {
+                    handle.seekToEndOfFile()
+                    handle.write(csvLine.data(using: .utf8)!)
+                    handle.closeFile()
+                } else {
+                    let header = "when,filename,original_size,new_size\n"
+                    try (header + csvLine).write(toFile: historyPath, atomically: true, encoding: .utf8)
                 }
+
+                if add || replace {
+                    print("Adding to Photos library...")
+                    try await PhotosLibrary.addToLibrary(
+                        videoURL: outputURL,
+                        originalAsset: video.asset,
+                        caption: "(shrunk with shrink-videos; original Motion-JPEG file was \(video.filename) which was \(video.formattedSize))"
+                    )
+                    print("Added to Photos library.")
+
+                    if replace {
+                        print("Deleting original from Photos library...")
+                        try await PhotosLibrary.deleteAsset(video.asset)
+                        print("Original moved to Recently Deleted.")
+                    }
+                }
+            } catch {
+                print("Error converting \(video.filename): \(error)")
+                Foundation.exit(1)
             }
-        } catch {
-            print("Error converting video: \(error)")
-            Foundation.exit(1)
         }
     }
 }
