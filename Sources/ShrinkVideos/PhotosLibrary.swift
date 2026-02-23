@@ -56,6 +56,9 @@ enum PhotosLibrary {
     }
 
     static func addToLibrary(videoURL: URL, originalAsset: PHAsset, caption: String? = nil) async throws {
+        // Read title and caption from the original asset via AppleScript
+        let originalMetadata = try getMediaItemMetadata(assetIdentifier: originalAsset.localIdentifier)
+
         var localIdentifier: String?
         try await PHPhotoLibrary.shared().performChanges {
             let request = PHAssetCreationRequest.forAsset()
@@ -68,30 +71,81 @@ enum PhotosLibrary {
             localIdentifier = request.placeholderForCreatedAsset?.localIdentifier
         }
 
-        if let caption, let localIdentifier {
-            try setCaption(caption, assetIdentifier: localIdentifier)
+        if let localIdentifier {
+            var fullCaption = originalMetadata.caption ?? ""
+            if let caption {
+                if !fullCaption.isEmpty {
+                    fullCaption += "\n\n"
+                }
+                fullCaption += caption
+            }
+            try setMediaItemMetadata(
+                assetIdentifier: localIdentifier,
+                title: originalMetadata.title,
+                caption: fullCaption.isEmpty ? nil : fullCaption
+            )
         }
     }
 
-    private static func setCaption(_ caption: String, assetIdentifier: String) throws {
-        let escapedId = assetIdentifier.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        let escapedCaption = caption.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+    private static func getMediaItemMetadata(assetIdentifier: String) throws -> (title: String?, caption: String?) {
+        let escapedId = escapeForAppleScript(assetIdentifier)
         let script = """
             tell application "Photos"
                 set theItem to media item id "\(escapedId)"
-                set description of theItem to "\(escapedCaption)"
+                set theTitle to name of theItem
+                set theDesc to description of theItem
+                return theTitle & "\\n---SEPARATOR---\\n" & theDesc
             end tell
             """
+        let (output, status) = runAppleScript(script)
+        guard status == 0, let output else { return (nil, nil) }
+
+        let parts = output.components(separatedBy: "\n---SEPARATOR---\n")
+        let title = parts.first.flatMap { $0.isEmpty ? nil : $0 }
+        let caption = parts.count > 1 ? (parts[1].isEmpty ? nil : parts[1]) : nil
+        return (title, caption)
+    }
+
+    private static func setMediaItemMetadata(assetIdentifier: String, title: String?, caption: String?) throws {
+        let escapedId = escapeForAppleScript(assetIdentifier)
+        var statements = "set theItem to media item id \"\(escapedId)\"\n"
+        if let title {
+            statements += "set name of theItem to \"\(escapeForAppleScript(title))\"\n"
+        }
+        if let caption {
+            statements += "set description of theItem to \"\(escapeForAppleScript(caption))\"\n"
+        }
+        let script = """
+            tell application "Photos"
+                \(statements)
+            end tell
+            """
+        let (_, status) = runAppleScript(script)
+        if status != 0 {
+            print("Warning: failed to set metadata via AppleScript (exit code \(status))")
+        }
+    }
+
+    private static func escapeForAppleScript(_ string: String) -> String {
+        string.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+    }
+
+    private static func runAppleScript(_ script: String) -> (output: String?, status: Int32) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         process.arguments = ["-e", script]
-        try process.run()
-        process.waitUntilExit()
-        if process.terminationStatus != 0 {
-            print("Warning: failed to set caption via AppleScript (exit code \(process.terminationStatus))")
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        do {
+            try process.run()
+        } catch {
+            return (nil, -1)
         }
+        process.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (output, process.terminationStatus)
     }
 
     static func getFileInfo(for phAsset: PHAsset) -> (filename: String, fileSize: Int64) {
