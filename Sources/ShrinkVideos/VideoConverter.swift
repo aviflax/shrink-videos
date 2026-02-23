@@ -63,6 +63,8 @@ enum VideoConverter {
             outputPath,
         ]
 
+        process.standardInput = FileHandle.nullDevice
+
         try process.run()
         process.waitUntilExit()
 
