@@ -51,6 +51,8 @@ enum VideoConverter {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ffmpeg)
         process.arguments = [
+            "-loglevel", "error",
+            "-stats",
             "-i", sourceURL.path,
             "-c:v", "hevc_videotoolbox",
             "-q:v", "65",
