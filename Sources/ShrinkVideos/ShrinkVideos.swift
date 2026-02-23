@@ -19,6 +19,9 @@ struct ShrinkVideos: AsyncParsableCommand {
     @Option(name: .long, help: "Number of found videos to skip before processing")
     var skip: Int = 0
 
+    @Flag(name: .long, help: "Add converted video to Photos library with original metadata")
+    var add: Bool = false
+
     func run() async throws {
         if !dryRun && all {
             print("--dry-run false --all is not yet implemented.")
@@ -101,6 +104,12 @@ struct ShrinkVideos: AsyncParsableCommand {
 
             print("Done! Saved to: \(outputURL.path)")
             print("Original: \(video.formattedSize) → Converted: \(outputMB)")
+
+            if add {
+                print("Adding to Photos library...")
+                try await PhotosLibrary.addToLibrary(videoURL: outputURL, originalAsset: video.asset)
+                print("Added to Photos library.")
+            }
         } catch {
             print("Error converting video: \(error)")
             Foundation.exit(1)

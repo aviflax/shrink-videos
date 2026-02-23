@@ -55,6 +55,16 @@ enum PhotosLibrary {
         }
     }
 
+    static func addToLibrary(videoURL: URL, originalAsset: PHAsset) async throws {
+        try await PHPhotoLibrary.shared().performChanges {
+            let request = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: videoURL)
+            guard let request else { return }
+            request.creationDate = originalAsset.creationDate
+            request.location = originalAsset.location
+            request.isFavorite = originalAsset.isFavorite
+        }
+    }
+
     static func getFileInfo(for phAsset: PHAsset) -> (filename: String, fileSize: Int64) {
         let resources = PHAssetResource.assetResources(for: phAsset)
         let videoResource = resources.first(where: { $0.type == .video })
