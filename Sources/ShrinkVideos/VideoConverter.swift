@@ -53,7 +53,7 @@ enum VideoConverter {
         process.arguments = [
             "-i", sourceURL.path,
             "-c:v", "hevc_videotoolbox",
-            "-q:v", "100",
+            "-q:v", "65",
             "-tag:v", "hvc1",
             "-c:a", "copy",
             "-map", "0",
