@@ -14,6 +14,7 @@ This is a Mac CLI app that can:
 
 * `--dry-run [true|false]` — `true` means that Motion JPEG videos will be found, but not converted. Defaults to `true`.
 * `--all` means that all Motion JPEG videos found; without this, only the first video found is processed
+* `--skip N` — skip the first N found videos before processing. E.g. `--skip 1` processes the second video found.
 
 ### Examples
 
