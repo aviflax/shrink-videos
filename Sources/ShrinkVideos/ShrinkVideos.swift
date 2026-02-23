@@ -107,7 +107,11 @@ struct ShrinkVideos: AsyncParsableCommand {
 
             if add {
                 print("Adding to Photos library...")
-                try await PhotosLibrary.addToLibrary(videoURL: outputURL, originalAsset: video.asset)
+                try await PhotosLibrary.addToLibrary(
+                    videoURL: outputURL,
+                    originalAsset: video.asset,
+                    caption: "(shrunk with shrink-videos; original Motion-JPEG file was \(video.filename) which was \(video.formattedSize))"
+                )
                 print("Added to Photos library.")
             }
         } catch {

@@ -42,7 +42,7 @@ enum VideoConverter {
         }
 
         let outputFilename = (video.filename as NSString)
-            .deletingPathExtension + ".mp4"
+            .deletingPathExtension + "-shrinked.mp4"
         let outputPath = "/tmp/\(outputFilename)"
 
         // Remove existing output file if present

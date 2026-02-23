@@ -55,13 +55,42 @@ enum PhotosLibrary {
         }
     }
 
-    static func addToLibrary(videoURL: URL, originalAsset: PHAsset) async throws {
+    static func addToLibrary(videoURL: URL, originalAsset: PHAsset, caption: String? = nil) async throws {
+        var localIdentifier: String?
         try await PHPhotoLibrary.shared().performChanges {
-            let request = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: videoURL)
-            guard let request else { return }
+            let request = PHAssetCreationRequest.forAsset()
+            let options = PHAssetResourceCreationOptions()
+            options.originalFilename = videoURL.lastPathComponent
+            request.addResource(with: .video, fileURL: videoURL, options: options)
             request.creationDate = originalAsset.creationDate
             request.location = originalAsset.location
             request.isFavorite = originalAsset.isFavorite
+            localIdentifier = request.placeholderForCreatedAsset?.localIdentifier
+        }
+
+        if let caption, let localIdentifier {
+            try setCaption(caption, assetIdentifier: localIdentifier)
+        }
+    }
+
+    private static func setCaption(_ caption: String, assetIdentifier: String) throws {
+        let escapedId = assetIdentifier.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedCaption = caption.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let script = """
+            tell application "Photos"
+                set theItem to media item id "\(escapedId)"
+                set description of theItem to "\(escapedCaption)"
+            end tell
+            """
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", script]
+        try process.run()
+        process.waitUntilExit()
+        if process.terminationStatus != 0 {
+            print("Warning: failed to set caption via AppleScript (exit code \(process.terminationStatus))")
         }
     }
 
