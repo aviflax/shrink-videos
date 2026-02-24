@@ -25,6 +25,9 @@ struct ShrinkVideos: AsyncParsableCommand {
     @Flag(name: .long, help: "Add converted video to Photos library and delete the original")
     var replace: Bool = false
 
+    @Flag(name: .long, help: "Scan all videos and report codec distribution")
+    var scan: Bool = false
+
     func run() async throws {
         if add && replace {
             print("Error: --add and --replace are mutually exclusive.")
@@ -39,9 +42,49 @@ struct ShrinkVideos: AsyncParsableCommand {
             Foundation.exit(1)
         }
 
-        print("Scanning Photos library for Motion JPEG videos...")
-
         let assets = PhotosLibrary.fetchAllVideoAssets()
+
+        if scan {
+            print("Scanning \(assets.count) videos for codec distribution...")
+
+            struct CodecStats {
+                var count: Int = 0
+                var totalSize: Int64 = 0
+            }
+            var statsByCodec: [String: CodecStats] = [:]
+
+            for asset in assets {
+                let avAsset: AVAsset
+                do {
+                    avAsset = try await PhotosLibrary.getAVAsset(for: asset)
+                } catch {
+                    continue
+                }
+
+                let codec = await VideoInspector.codecName(for: avAsset) ?? "unknown"
+                let (_, fileSize) = PhotosLibrary.getFileInfo(for: asset)
+                statsByCodec[codec, default: CodecStats()].count += 1
+                statsByCodec[codec, default: CodecStats()].totalSize += fileSize
+            }
+
+            let sorted = statsByCodec.sorted { $0.value.totalSize > $1.value.totalSize }
+
+            let codecWidth = max(5, sorted.map(\.key.count).max() ?? 5)
+            print("\("Codec".padding(toLength: codecWidth, withPad: " ", startingAt: 0))  \("Count".leftPadded(to: 5))  \("Total Size".leftPadded(to: 10))")
+            for (codec, stats) in sorted {
+                let size = Double(stats.totalSize) / 1_000_000_000
+                let sizeStr: String
+                if size >= 1 {
+                    sizeStr = String(format: "%.1f GB", size)
+                } else {
+                    sizeStr = String(format: "%.1f MB", size * 1000)
+                }
+                print("\(codec.padding(toLength: codecWidth, withPad: " ", startingAt: 0))  \(String(stats.count).leftPadded(to: 5))  \(sizeStr.leftPadded(to: 10))")
+            }
+            return
+        }
+
+        print("Scanning Photos library for Motion JPEG videos...")
         print("Found \(assets.count) total videos. Checking codecs...\n")
 
         var mjpegVideos: [VideoInfo] = []
@@ -153,5 +196,12 @@ struct ShrinkVideos: AsyncParsableCommand {
                 Foundation.exit(1)
             }
         }
+    }
+}
+
+private extension String {
+    func leftPadded(to length: Int) -> String {
+        if count >= length { return self }
+        return String(repeating: " ", count: length - count) + self
     }
 }
