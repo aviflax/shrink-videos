@@ -1,3 +1,5 @@
+//  Copyright © 2026 Avi Flax. ALL RIGHTS RESERVED; see ../COPYRIGHT
+
 import Foundation
 
 enum ConversionError: Error, CustomStringConvertible {

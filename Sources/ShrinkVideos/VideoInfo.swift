@@ -1,3 +1,5 @@
+//  Copyright © 2026 Avi Flax. ALL RIGHTS RESERVED; see ../COPYRIGHT
+
 import Foundation
 import Photos
 import AVFoundation
